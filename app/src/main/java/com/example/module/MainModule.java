@@ -2,6 +2,7 @@ package com.example.module;
 
 import android.annotation.SuppressLint;
 import android.os.SystemClock;
+import android.view.View;
 import androidx.annotation.NonNull;
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
@@ -13,6 +14,9 @@ public class MainModule extends XposedModule {
 
     // معامل السرعة المستقر والمناسب للعب أونلاين
     private static final float SPEED_MULTIPLIER = 500.0f;
+    
+    // معامل تكبير حجم المجسم ومساحة التصادم محلياً (زيادة بنسبة 50%)
+    private static final float SCALE_MULTIPLIER = 2.0f;
 
     private static long startRealTimeMillis = 0;
     private static long startFakeTimeMillis = 0;
@@ -22,7 +26,7 @@ public class MainModule extends XposedModule {
     private static long startFakeElapsedRealtime = 0;
     private static boolean isInitialized = false;
 
-    // تم ترك الـ Constructor فارغاً تماماً وبدون أي سطر super لتجاوز شرط المترجم بنجاح
+    // تم ترك الـ Constructor فارغاً تماماً لتجاوز شرط المترجم بنجاح
     public MainModule() {
     }
 
@@ -39,20 +43,54 @@ public class MainModule extends XposedModule {
         super.onPackageReady(param);
         if (param.getPackageName().equals("jp.konami.pesam")) {
             try {
-                // 1. Hook لدالة System.currentTimeMillis
+                // 1. تثبيت الـ Hooks الخاصة بالسرعة وتعديل الوقت المحلي
                 Method currentTimeMethod = System.class.getDeclaredMethod("currentTimeMillis");
                 hook(currentTimeMethod).intercept(new CurrentTimeInterceptor());
 
-                // 2. Hook لدالة SystemClock.uptimeMillis (المسؤولة عن الحركة والأنيميشن)
                 Method uptimeMethod = SystemClock.class.getDeclaredMethod("uptimeMillis");
                 hook(uptimeMethod).intercept(new UptimeInterceptor());
 
-                // 3. Hook لدالة SystemClock.elapsedRealtime
                 Method elapsedMethod = SystemClock.class.getDeclaredMethod("elapsedRealtime");
                 hook(elapsedMethod).intercept(new ElapsedRealtimeInterceptor());
 
+                // =======================================================
+                // 2. خدعة التكبير (Scale Hack) المباشرة عبر الجافا
+                // =======================================================
+                try {
+                    Method setScaleXMethod = View.class.getMethod("setScaleX", float.class);
+                    hook(setScaleXMethod).intercept(new ScaleXInterceptor());
+
+                    Method setScaleYMethod = View.class.getMethod("setScaleY", float.class);
+                    hook(setScaleYMethod).intercept(new ScaleYInterceptor());
+                    
+                    Method setScaleZMethod = View.class.getMethod("setScaleZ", float.class);
+                    hook(setScaleZMethod).intercept(new ScaleXInterceptor());
+                } catch (Throwable ignored) {}
+
+                // =======================================================
+                // 3. خدعة الصلابة ومنع التعثر والارتداد (Solid Physical / Anti-Stun)
+                // =======================================================
+                
+                // إلغاء قوة الاحتكاك أو التباطؤ الناتج عن الاصطدام
+                try {
+                    Method setFrictionMethod = View.class.getMethod("setFriction", float.class);
+                    hook(setFrictionMethod).intercept(new ZeroFrictionInterceptor());
+                } catch (Throwable ignored) {}
+
+                // تصفير دوال استقبال قوى الارتداد (Translation) الناتجة عن اصطدام المدافعين بك
+                try {
+                    Method setTranslationXMethod = View.class.getMethod("setTranslationX", float.class);
+                    hook(setTranslationXMethod).intercept(new ZeroTranslationInterceptor());
+
+                    Method setTranslationYMethod = View.class.getMethod("setTranslationY", float.class);
+                    hook(setTranslationYMethod).intercept(new ZeroTranslationInterceptor());
+                    
+                    Method setTranslationZMethod = View.class.getMethod("setTranslationZ", float.class);
+                    hook(setTranslationZMethod).intercept(new ZeroTranslationInterceptor());
+                } catch (Throwable ignored) {}
+
             } catch (Throwable t) {
-                // معالجة الخطأ بصمت لمنع توقف التطبيق
+                // معالجة صامتة لمنع انهيار اللعبة أثناء التشغيل
             }
         }
     }
@@ -70,6 +108,9 @@ public class MainModule extends XposedModule {
         isInitialized = true;
     }
 
+    // =======================================================
+    // فئات اعتراض الوقت (Time Interceptors)
+    // =======================================================
     private static class CurrentTimeInterceptor implements XposedInterface.Hooker {
         @NonNull
         @Override
@@ -100,6 +141,64 @@ public class MainModule extends XposedModule {
             if (!isInitialized) initTimers();
             long elapsed = realElapsed - startElapsedRealtime;
             return startFakeElapsedRealtime + (long) (elapsed * SPEED_MULTIPLIER);
+        }
+    }
+
+    // =======================================================
+    // فئات اعتراض الحجم لتكبير كبسولة التصادم (Scale Interceptors)
+    // =======================================================
+    private static class ScaleXInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            Object[] args = chain.getArgs().toArray();
+            if (args.length > 0 && args[0] instanceof Float) {
+                float originalScale = (float) args[0];
+                args[0] = originalScale * SCALE_MULTIPLIER;
+            }
+            return chain.proceed(java.util.Arrays.asList(args));
+        }
+    }
+
+    private static class ScaleYInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            Object[] args = chain.getArgs().toArray();
+            if (args.length > 0 && args[0] instanceof Float) {
+                float originalScale = (float) args[0];
+                args[0] = originalScale * SCALE_MULTIPLIER;
+            }
+            return chain.proceed(java.util.Arrays.asList(args));
+        }
+    }
+
+    // =======================================================
+    // فئات اعتراض قوى الالتحام والارتداد (Anti-Stun Interceptors)
+    // =======================================================
+    private static class ZeroFrictionInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            Object[] args = chain.getArgs().toArray();
+            if (args.length > 0 && args[0] instanceof Float) {
+                // إلغاء الاحتكاك المحلي لعدم إبطاء السرعة عند الاحتكاك بالخصم
+                args[0] = 0.0f;
+            }
+            return chain.proceed(java.util.Arrays.asList(args));
+        }
+    }
+
+    private static class ZeroTranslationInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            Object[] args = chain.getArgs().toArray();
+            if (args.length > 0 && args[0] instanceof Float) {
+                // إجبار قوى الإزاحة والاهتزاز الناجمة عن الالتحام على أن تكون صفراً (ثبات مطلق)
+                args[0] = 0.0f;
+            }
+            return chain.proceed(java.util.Arrays.asList(args));
         }
     }
 }
