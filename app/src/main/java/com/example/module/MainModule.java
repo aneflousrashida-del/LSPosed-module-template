@@ -1,68 +1,100 @@
 package com.example.module;
 
 import android.annotation.SuppressLint;
-
+import android.os.SystemClock;
 import androidx.annotation.NonNull;
-
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
+import java.lang.reflect.Method;
 
-/**
- * This is the entry point class for the Xposed module.
- * Customization suggestions:
- * 1. Change the package name `com.example.module` to your own.
- * 2. Add your Hook logic in `onSystemServerStarting`, `onPackageLoaded`, or `onPackageReady`.
- */
 @SuppressLint({"PrivateApi", "BlockedPrivateApi"})
 public class MainModule extends XposedModule {
 
-    @Override
-    public void onSystemServerStarting(@NonNull SystemServerStartingParam param) {
-        // Add Hook logic for System Server here
-        // For example:
-        // try {
-        //     var classLoader = param.getClassLoader();
-        //     var clazz = classLoader.loadClass("com.android.server.wm.WindowManagerService");
-        //     var method = clazz.getDeclaredMethod("exampleMethod");
-        //     hook(method).intercept(new ExampleHooker());
-        // } catch (Throwable t) {
-        //     log(android.util.Log.ERROR, "MainModule", "Hook failed", t);
-        // }
+    // معامل السرعة: 1.5 لضمان السلاسة وتفادي الحظر
+    private static final float SPEED_MULTIPLIER = 1.5f;
+
+    private static long startRealTimeMillis = 0;
+    private static long startFakeTimeMillis = 0;
+    private static long startUptimeMillis = 0;
+    private static long startFakeUptimeMillis = 0;
+    private static long startElapsedRealtime = 0;
+    private static long startFakeElapsedRealtime = 0;
+    private static boolean isInitialized = false;
+
+    public MainModule(@NonNull XposedModule base, @NonNull PackageLoadedParam param) {
+        super(base, param);
     }
 
     @Override
     public void onPackageLoaded(@NonNull PackageLoadedParam param) {
-        // Called when the default classloader is ready, before AppComponentFactory instantiation.
-        // Note: getClassLoader() is NOT available here. Use onPackageReady() for classloader access.
-        // if (param.getPackageName().equals("com.target.package")) {
-        //     // ...
-        // }
+        // ننتظر حتى تصبح حزمة لعبة eFootball جاهزة للحقن
+        if (param.getPackageName().equals("jp.konami.pesam")) {
+            initTimers();
+        }
     }
 
     @Override
     public void onPackageReady(@NonNull PackageReadyParam param) {
-        // Called after AppComponentFactory has created the app classloader.
-        // Use param.getClassLoader() here to load and hook target classes.
-        // if (param.getPackageName().equals("com.target.package")) {
-        //     var classLoader = param.getClassLoader();
-        //     // ...
-        // }
+        if (param.getPackageName().equals("jp.konami.pesam")) {
+            try {
+                // 1. Hook لدالة System.currentTimeMillis
+                Method currentTimeMethod = System.class.getDeclaredMethod("currentTimeMillis");
+                hook(currentTimeMethod).intercept(new CurrentTimeInterceptor());
+
+                // 2. Hook لدالة SystemClock.uptimeMillis (المسؤولة عن الأنيميشن والحركة)
+                Method uptimeMethod = SystemClock.class.getDeclaredMethod("uptimeMillis");
+                hook(uptimeMethod).intercept(new UptimeInterceptor());
+
+                // 3. Hook لدالة SystemClock.elapsedRealtime
+                Method elapsedMethod = SystemClock.class.getDeclaredMethod("elapsedRealtime");
+                hook(elapsedMethod).intercept(new ElapsedRealtimeInterceptor());
+
+            } catch (Throwable t) {
+                // فشل ربط الهوك
+            }
+        }
     }
 
-    /**
-     * This is a simple Hooker example using the OkHttp-style interceptor chain.
-     */
-    private static class ExampleHooker implements XposedInterface.Hooker {
+    private static synchronized void initTimers() {
+        if (isInitialized) return;
+        startRealTimeMillis = System.currentTimeMillis();
+        startFakeTimeMillis = startRealTimeMillis;
+
+        startUptimeMillis = SystemClock.uptimeMillis();
+        startFakeUptimeMillis = startUptimeMillis;
+
+        startElapsedRealtime = SystemClock.elapsedRealtime();
+        startFakeElapsedRealtime = startElapsedRealtime;
+        isInitialized = true;
+    }
+
+    private static class CurrentTimeInterceptor implements XposedInterface.Hooker {
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            // Logic to execute before method execution
+            long realTime = (long) chain.proceed();
+            if (!isInitialized) initTimers();
+            long elapsed = realTime - startRealTimeMillis;
+            return startFakeTimeMillis + (long) (elapsed * SPEED_MULTIPLIER);
+        }
+    }
 
-            // Call the next interceptor in the chain (or the original method)
-            Object result = chain.proceed();
+    private static class UptimeInterceptor implements XposedInterface.Hooker {
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            long realUptime = (long) chain.proceed();
+            if (!isInitialized) initTimers();
+            long elapsed = realUptime - startUptimeMillis;
+            return startFakeUptimeMillis + (long) (elapsed * SPEED_MULTIPLIER);
+        }
+    }
 
-            // Logic to execute after method execution
-
-            return result;
+    private static class ElapsedRealtimeInterceptor implements XposedInterface.Hooker {
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            long realElapsed = (long) chain.proceed();
+            if (!isInitialized) initTimers();
+            long elapsed = realElapsed - startElapsedRealtime;
+            return startFakeElapsedRealtime + (long) (elapsed * SPEED_MULTIPLIER);
         }
     }
 }
