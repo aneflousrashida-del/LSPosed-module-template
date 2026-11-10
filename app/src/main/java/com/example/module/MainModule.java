@@ -8,7 +8,6 @@ import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
 import io.github.libxposed.api.XposedModuleInterface;
 import java.lang.reflect.Method;
-import java.util.Collections;
 
 @SuppressLint({"PrivateApi", "BlockedPrivateApi"})
 public class MainModule extends XposedModule {
@@ -17,7 +16,7 @@ public class MainModule extends XposedModule {
     private static final float SPEED_MULTIPLIER = 500.0f;
     
     // معامل تكبير حجم المجسم ومساحة التصادم محلياً (زيادة بنسبة 50%)
-    private static final float SCALE_MULTIPLIER = 1.5f;
+    private static final float SCALE_MULTIPLIER = 2.0f;
 
     private static long startRealTimeMillis = 0;
     private static long startFakeTimeMillis = 0;
@@ -153,10 +152,10 @@ public class MainModule extends XposedModule {
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
             float newScale = SCALE_MULTIPLIER;
-            if (!chain.getArgs().isEmpty() && chain.getArgs().get(0) instanceof Float) {
-                newScale = ((Float) chain.getArgs().get(0)) * SCALE_MULTIPLIER;
+            if (chain.getArgs() != null && chain.getArgs().length > 0 && chain.getArgs()[0] instanceof Float) {
+                newScale = ((Float) chain.getArgs()[0]) * SCALE_MULTIPLIER;
             }
-            return chain.proceed(Collections.singletonList(newScale));
+            return chain.proceed(new Object[]{newScale});
         }
     }
 
@@ -165,10 +164,10 @@ public class MainModule extends XposedModule {
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
             float newScale = SCALE_MULTIPLIER;
-            if (!chain.getArgs().isEmpty() && chain.getArgs().get(0) instanceof Float) {
-                newScale = ((Float) chain.getArgs().get(0)) * SCALE_MULTIPLIER;
+            if (chain.getArgs() != null && chain.getArgs().length > 0 && chain.getArgs()[0] instanceof Float) {
+                newScale = ((Float) chain.getArgs()[0]) * SCALE_MULTIPLIER;
             }
-            return chain.proceed(Collections.singletonList(newScale));
+            return chain.proceed(new Object[]{newScale});
         }
     }
 
@@ -177,10 +176,10 @@ public class MainModule extends XposedModule {
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
             float newScale = SCALE_MULTIPLIER;
-            if (!chain.getArgs().isEmpty() && chain.getArgs().get(0) instanceof Float) {
-                newScale = ((Float) chain.getArgs().get(0)) * SCALE_MULTIPLIER;
+            if (chain.getArgs() != null && chain.getArgs().length > 0 && chain.getArgs()[0] instanceof Float) {
+                newScale = ((Float) chain.getArgs()[0]) * SCALE_MULTIPLIER;
             }
-            return chain.proceed(Collections.singletonList(newScale));
+            return chain.proceed(new Object[]{newScale});
         }
     }
 
@@ -191,7 +190,7 @@ public class MainModule extends XposedModule {
         @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            return chain.proceed(Collections.singletonList(0.0f));
+            return chain.proceed(new Object[]{0.0f});
         }
     }
 
@@ -199,7 +198,7 @@ public class MainModule extends XposedModule {
         @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            return chain.proceed(Collections.singletonList(0.0f));
+            return chain.proceed(new Object[]{0.0f});
         }
     }
 
@@ -207,7 +206,7 @@ public class MainModule extends XposedModule {
         @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            return chain.proceed(Collections.singletonList(0.0f));
+            return chain.proceed(new Object[]{0.0f});
         }
     }
 
@@ -215,7 +214,7 @@ public class MainModule extends XposedModule {
         @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            return chain.proceed(Collections.singletonList(0.0f));
+            return chain.proceed(new Object[]{0.0f});
         }
     }
 }
