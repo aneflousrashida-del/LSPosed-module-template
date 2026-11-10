@@ -12,8 +12,6 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "speedhack.h"
-
 typedef int (*GETTIMEOFDAY) (struct timeval *tv, struct timezone *tz);
 typedef int (*CLOCK_GETTIME) (clockid_t clk_id, struct timespec *tp);
 
