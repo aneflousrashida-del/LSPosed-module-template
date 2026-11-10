@@ -8,6 +8,7 @@ import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
 import io.github.libxposed.api.XposedModuleInterface;
 import java.lang.reflect.Method;
+import java.util.Collections;
 
 @SuppressLint({"PrivateApi", "BlockedPrivateApi"})
 public class MainModule extends XposedModule {
@@ -16,7 +17,7 @@ public class MainModule extends XposedModule {
     private static final float SPEED_MULTIPLIER = 500.0f;
     
     // معامل تكبير حجم المجسم ومساحة التصادم محلياً (زيادة بنسبة 50%)
-    private static final float SCALE_MULTIPLIER = 2.0f;
+    private static final float SCALE_MULTIPLIER = 1.5f;
 
     private static long startRealTimeMillis = 0;
     private static long startFakeTimeMillis = 0;
@@ -64,7 +65,7 @@ public class MainModule extends XposedModule {
                     hook(setScaleYMethod).intercept(new ScaleYInterceptor());
                     
                     Method setScaleZMethod = View.class.getMethod("setScaleZ", float.class);
-                    hook(setScaleZMethod).intercept(new ScaleXInterceptor());
+                    hook(setScaleZMethod).intercept(new ScaleZInterceptor());
                 } catch (Throwable ignored) {}
 
                 // =======================================================
@@ -80,13 +81,13 @@ public class MainModule extends XposedModule {
                 // تصفير دوال استقبال قوى الارتداد (Translation) الناتجة عن اصطدام المدافعين بك
                 try {
                     Method setTranslationXMethod = View.class.getMethod("setTranslationX", float.class);
-                    hook(setTranslationXMethod).intercept(new ZeroTranslationInterceptor());
+                    hook(setTranslationXMethod).intercept(new ZeroTranslationXInterceptor());
 
                     Method setTranslationYMethod = View.class.getMethod("setTranslationY", float.class);
-                    hook(setTranslationYMethod).intercept(new ZeroTranslationInterceptor());
+                    hook(setTranslationYMethod).intercept(new ZeroTranslationYInterceptor());
                     
                     Method setTranslationZMethod = View.class.getMethod("setTranslationZ", float.class);
-                    hook(setTranslationZMethod).intercept(new ZeroTranslationInterceptor());
+                    hook(setTranslationZMethod).intercept(new ZeroTranslationZInterceptor());
                 } catch (Throwable ignored) {}
 
             } catch (Throwable t) {
@@ -151,12 +152,11 @@ public class MainModule extends XposedModule {
         @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            Object[] args = chain.getArgs().toArray();
-            if (args.length > 0 && args[0] instanceof Float) {
-                float originalScale = (float) args[0];
-                args[0] = originalScale * SCALE_MULTIPLIER;
+            float newScale = SCALE_MULTIPLIER;
+            if (!chain.getArgs().isEmpty() && chain.getArgs().get(0) instanceof Float) {
+                newScale = ((Float) chain.getArgs().get(0)) * SCALE_MULTIPLIER;
             }
-            return chain.proceed(java.util.Arrays.asList(args));
+            return chain.proceed(Collections.singletonList(newScale));
         }
     }
 
@@ -164,12 +164,23 @@ public class MainModule extends XposedModule {
         @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            Object[] args = chain.getArgs().toArray();
-            if (args.length > 0 && args[0] instanceof Float) {
-                float originalScale = (float) args[0];
-                args[0] = originalScale * SCALE_MULTIPLIER;
+            float newScale = SCALE_MULTIPLIER;
+            if (!chain.getArgs().isEmpty() && chain.getArgs().get(0) instanceof Float) {
+                newScale = ((Float) chain.getArgs().get(0)) * SCALE_MULTIPLIER;
             }
-            return chain.proceed(java.util.Arrays.asList(args));
+            return chain.proceed(Collections.singletonList(newScale));
+        }
+    }
+
+    private static class ScaleZInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            float newScale = SCALE_MULTIPLIER;
+            if (!chain.getArgs().isEmpty() && chain.getArgs().get(0) instanceof Float) {
+                newScale = ((Float) chain.getArgs().get(0)) * SCALE_MULTIPLIER;
+            }
+            return chain.proceed(Collections.singletonList(newScale));
         }
     }
 
@@ -180,25 +191,31 @@ public class MainModule extends XposedModule {
         @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            Object[] args = chain.getArgs().toArray();
-            if (args.length > 0 && args[0] instanceof Float) {
-                // إلغاء الاحتكاك المحلي لعدم إبطاء السرعة عند الاحتكاك بالخصم
-                args[0] = 0.0f;
-            }
-            return chain.proceed(java.util.Arrays.asList(args));
+            return chain.proceed(Collections.singletonList(0.0f));
         }
     }
 
-    private static class ZeroTranslationInterceptor implements XposedInterface.Hooker {
+    private static class ZeroTranslationXInterceptor implements XposedInterface.Hooker {
         @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            Object[] args = chain.getArgs().toArray();
-            if (args.length > 0 && args[0] instanceof Float) {
-                // إجبار قوى الإزاحة والاهتزاز الناجمة عن الالتحام على أن تكون صفراً (ثبات مطلق)
-                args[0] = 0.0f;
-            }
-            return chain.proceed(java.util.Arrays.asList(args));
+            return chain.proceed(Collections.singletonList(0.0f));
+        }
+    }
+
+    private static class ZeroTranslationYInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            return chain.proceed(Collections.singletonList(0.0f));
+        }
+    }
+
+    private static class ZeroTranslationZInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            return chain.proceed(Collections.singletonList(0.0f));
         }
     }
 }
