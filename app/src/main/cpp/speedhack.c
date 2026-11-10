@@ -1,207 +1,70 @@
-/*
- * speedhack.c
- *
- *  Created on: Aug 28, 2013
- *      Author: eric
- */
-
 #include <sys/time.h>
 #include <stddef.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
+#include <jni.h>
 
-typedef int (*GETTIMEOFDAY) (struct timeval *tv, struct timezone *tz);
+// تحديد دالة الوقت الأصلي من النظام
 typedef int (*CLOCK_GETTIME) (clockid_t clk_id, struct timespec *tp);
+CLOCK_GETTIME real_clock_gettime = NULL;
 
-GETTIMEOFDAY real_gettimeofday;
-CLOCK_GETTIME real_clock_gettime;
+// تم التعديل إلى 1.5 لضمان الاستقرار وتفادي مشاكل الحماية والسيرفر
+static double speed_multiplier = 1.5; 
 
+static struct timespec start_real_time;
+static struct timespec start_fake_time;
+static int is_initialized = 0;
 
-
-float speedmultiplier;
-
-struct {
-  int result;
-  struct timespec initialoffset;
-  struct timespec initialtime;
-} initialclock[10];
-
-struct timeval initial_offset_tod_tv;
-struct timeval initial_time_tod_tv;
-
-int new_clock_gettime(clockid_t clk_id, struct timespec *tp)
-{
-  int r=-1;
-  struct timespec currenttp;
-
-
-
-  r=real_clock_gettime(clk_id, &currenttp);
-
-  //printf("clock_gettime\n");
-
-
-  if ((clk_id<=9) && (initialclock[clk_id].result==0))
-  {
-    struct timespec temptp;
-
-    temptp.tv_sec=currenttp.tv_sec-initialclock[clk_id].initialtime.tv_sec;
-    temptp.tv_nsec=currenttp.tv_nsec-initialclock[clk_id].initialtime.tv_nsec;
-
-    if (temptp.tv_nsec<0)
-    {
-      temptp.tv_nsec+=1000000000;
-      temptp.tv_sec--;
+// الدالة البديلة التي سيتم حقنها في اللعبة
+int new_clock_gettime(clockid_t clk_id, struct timespec *tp) {
+    if (real_clock_gettime == NULL) {
+        return -1; 
     }
 
-    //printf("delta : sec=%ld  nsec=%ld\n", temptp.tv_sec, temptp.tv_nsec);
-
-    double newsec_double = (double)temptp.tv_sec*speedmultiplier;
-
-    int64_t newnsec=floor((double)temptp.tv_nsec*speedmultiplier);
-    int64_t newsec=floor(newsec_double);
-
-    newnsec+=floor((newsec_double - floor(newsec_double)) * 1000000000.0f);
-
-    //printf("newsec=%ld  newnsec=%ld\n", newsec, newnsec);
-
-    //add the initial offset
-    newsec+=initialclock[clk_id].initialoffset.tv_sec;
-    newnsec+=initialclock[clk_id].initialoffset.tv_nsec;
-
-
-    //sanitize the results (no negative usec, and add usec values of 1000000 to sec)
-    newsec+=newnsec / 1000000000;  //if newsec is negative this will decrease it with the number of seconds it represents
-    newnsec=newnsec % 1000000000;
-
-
-    if (newnsec<0)
-    {
-      newnsec+=1000000000;
-      newsec--;
+    struct timespec current_time;
+    int result = real_clock_gettime(clk_id, &current_time);
+    
+    if (result != 0 || tp == NULL) {
+        return result;
     }
 
-    if (tp)
-    {
-      tp->tv_sec=newsec;
-      tp->tv_nsec=newnsec;
+    // تسريع الساعات الحساسة للحركة الفيزيائية داخل الملعب (MONOTONIC & BOOTTIME)
+    if (clk_id == CLOCK_MONOTONIC || clk_id == CLOCK_BOOTTIME || clk_id == 1) {
+        if (!is_initialized) {
+            start_real_time = current_time;
+            start_fake_time = current_time;
+            is_initialized = 1;
+        }
+
+        // حساب الفارق الزمني الحقيقي
+        double elapsed_sec = (current_time.tv_sec - start_real_time.tv_sec) + 
+                             (current_time.tv_nsec - start_real_time.tv_nsec) / 1000000000.0;
+
+        // ضرب الفارق في 1.5 لتوليد التوقيت المتسارع الآمن
+        double fake_elapsed_sec = elapsed_sec * speed_multiplier;
+
+        // حساب الوقت المزيف الجديد لإرساله للعبة
+        int64_t fake_sec = start_fake_time.tv_sec + (int64_t)fake_elapsed_sec;
+        int64_t fake_nsec = start_fake_time.tv_nsec + (int64_t)((fake_elapsed_sec - (int64_t)fake_elapsed_sec) * 1000000000.0);
+
+        if (fake_nsec >= 1000000000) {
+            fake_sec += fake_nsec / 1000000000;
+            fake_nsec %= 1000000000;
+        }
+
+        tp->tv_sec = fake_sec;
+        tp->tv_nsec = fake_nsec;
+    } else {
+        // بقية التواقيت تترك طبيعية لتجنب أي كراش في النظام
+        *tp = current_time;
     }
 
-
-  }
-  else
-  {
-    if (tp)
-    {
-      *tp=currenttp;
-    }
-  }
-
-  return r;
+    return result;
 }
 
-int new_gettimeofday(struct timeval *tv, struct timezone *tz)
-{
-  int r;
-
-  struct timeval currenttv;
-  struct timeval temptv;
-
-  //get the current real time
-  r=real_gettimeofday(&currenttv, tz);
-
-  //Subtract the real time with the initial time(real) and multiply that with the speed and add it to the initial time offset (fake)
-
-
-  //assume that currenttv is ALWAYS bigger than initial_time (or at least equal)
-  temptv.tv_sec=currenttv.tv_sec-initial_time_tod_tv.tv_sec;
-  temptv.tv_usec=currenttv.tv_usec-initial_time_tod_tv.tv_usec;
-
-  if (temptv.tv_usec<0)
-  {
-    temptv.tv_usec+=1000000;
-    temptv.tv_sec--;
-  }
-
-
-  //printf("delta : sec=%ld  usec=%ld\n", temptv.tv_sec, temptv.tv_usec);
-
-  //temptv now contains the relative time passed since the speedhack got enabled/set a new speed
-
-  //because of the high values multiply in two steps instead of one like on windows where 64-bit is the biggest time value
-  //(and not all systems seem to support uint128)
-
-  double newsec_double = (double)temptv.tv_sec*speedmultiplier;
-
-  int64_t newusec=floor((double)temptv.tv_usec*speedmultiplier);
-  int64_t newsec=floor(newsec_double);
-
-  //convert the decimal part of sec to usec
-
-  newusec+=floor((newsec_double - floor(newsec_double)) * 1000000.0f);
-
-
-
-  //printf("newsec=%ld  newusec=%ld\n", newsec, newusec);
-
-  //add the initial offset
-  newsec+=initial_offset_tod_tv.tv_sec;
-  newusec+=initial_offset_tod_tv.tv_usec;
-
-
-
-
-  //sanitize the results (no negative usec, and add usec values of 1000000 to sec)
-  newsec+=newusec / 1000000;  //if newsec is negative this will decrease it with the number of seconds it represents
-  newusec=newusec % 1000000;
-
-
-  if (newusec<0)
-  {
-    newusec+=1000000;
-    newsec--;
-  }
-
-
-
-  if (tv)
-  {
-    tv->tv_sec=newsec;
-    tv->tv_usec=newusec;
-  }
-
-  return r;
-}
-
-int speedhack_initializeSpeed(float speed)
-{
-
- // printf("speedhack_initializeSpeed(%f)\n", speed);
-  gettimeofday(&initial_offset_tod_tv, NULL);
-
-  if (real_gettimeofday)
-    real_gettimeofday(&initial_time_tod_tv, NULL);
-  else
-    gettimeofday(&initial_time_tod_tv, NULL);
-
-
-  int i;
-  for (i=0; i<=9; i++)
-  {
-    clock_gettime(i, &initialclock[i].initialoffset);
-
-    if (real_clock_gettime)
-      initialclock[i].result=real_clock_gettime(i, &initialclock[i].initialtime);
-    else
-      initialclock[i].result=clock_gettime(i, &initialclock[i].initialtime);
-
-  }
-
-
-
-  speedmultiplier=2.0f;
-
-  return 1;
+// دالة تهيئة الموديول عند الحقن داخل الرام عبر ShizuPosed
+void __attribute__((constructor)) init_speedhack() {
+    real_clock_gettime = (CLOCK_GETTIME)clock_gettime;
 }
