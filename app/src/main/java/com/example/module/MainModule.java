@@ -116,7 +116,7 @@ public class MainModule extends XposedModule {
         startElapsedRealtime = SystemClock.elapsedRealtime();
         startFakeElapsedRealtime = startElapsedRealtime;
         isInitialized = true;
-    }
+                        }
         private static class CurrentTimeInterceptor implements XposedInterface.Hooker {
         @NonNull
         @Override
@@ -262,14 +262,14 @@ public class MainModule extends XposedModule {
         @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            Object[] args = chain.getArgs().toArray();
-            if (args.length > 0 && args instanceof Integer) {
-                int flags = (int) args;
+            Object[] arguments = chain.getArgs().toArray();
+            if (arguments.length > 0 && arguments[0] instanceof Integer) {
+                int flags = (int) arguments[0];
                 flags |= WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
                 flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
-                args = flags;
+                arguments[0] = flags;
             }
-            return chain.proceed(args);
+            return chain.proceed(arguments);
         }
     }
 }
