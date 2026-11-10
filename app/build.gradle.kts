@@ -11,6 +11,19 @@ android {
         minSdk = 31
         versionCode = 1
         versionName = "1.0.0"
+
+        // تحديد ترجمة الكود لمعمارية 64 بت فقط للأنظمة الحديثة
+        ndk {
+            abiFilters.add("arm64-v8a")
+        }
+    }
+
+    // ربط ملف التوجيه والترجمة لكود الـ C
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     lint {
