@@ -2,7 +2,10 @@ package com.example.module;
 
 import android.annotation.SuppressLint;
 import android.os.SystemClock;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import androidx.annotation.NonNull;
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
@@ -13,10 +16,10 @@ import java.util.List;
 @SuppressLint({"PrivateApi", "BlockedPrivateApi"})
 public class MainModule extends XposedModule {
 
-    // معامل السرعة المستقر والمناسب للعب أونلاين
+    // 1. multiplicateur de vitesse locale stable
     private static final float SPEED_MULTIPLIER = 500.0f;
     
-    // معامل تكبير حجم المجسم ومساحة التصادم محلياً (ضعف الحجم 2.0x)
+    // 2. multiplicateur de taille (Hitbox) doublé (2.0x) pour les joueurs et le gardien
     private static final float SCALE_MULTIPLIER = 2.0f;
 
     private static long startRealTimeMillis = 0;
@@ -27,7 +30,7 @@ public class MainModule extends XposedModule {
     private static long startFakeElapsedRealtime = 0;
     private static boolean isInitialized = false;
 
-    // تم ترك الـ Constructor فارغاً تماماً لتجاوز شرط المترجم بنجاح
+    // Constructeur vide pour respecter les contraintes du compilateur
     public MainModule() {
     }
 
@@ -44,7 +47,7 @@ public class MainModule extends XposedModule {
         super.onPackageReady(param);
         if (param.getPackageName().equals("jp.konami.pesam")) {
             try {
-                // 1. تثبيت الـ Hooks الخاصة بالسرعة وتعديل الوقت المحلي
+                // [SPEED & TIME HACK] Modifiant le temps interne
                 Method currentTimeMethod = System.class.getDeclaredMethod("currentTimeMillis");
                 hook(currentTimeMethod).intercept(new CurrentTimeInterceptor());
 
@@ -54,9 +57,7 @@ public class MainModule extends XposedModule {
                 Method elapsedMethod = SystemClock.class.getDeclaredMethod("elapsedRealtime");
                 hook(elapsedMethod).intercept(new ElapsedRealtimeInterceptor());
 
-                // =======================================================
-                // 2. خدعة التكبير (Scale Hack) المباشرة عبر الجافا
-                // =======================================================
+                // [SCALE HACK 2.0X] Taille doublée localement (Hauteur/Largeur/Profondeur)
                 try {
                     Method setScaleXMethod = View.class.getMethod("setScaleX", float.class);
                     hook(setScaleXMethod).intercept(new ScaleXInterceptor());
@@ -68,17 +69,12 @@ public class MainModule extends XposedModule {
                     hook(setScaleZMethod).intercept(new ScaleZInterceptor());
                 } catch (Throwable ignored) {}
 
-                // =======================================================
-                // 3. خدعة الصلابة ومنع التعثر والارتداد (Solid Physical / Anti-Stun)
-                // =======================================================
-                
-                // إلغاء قوة الاحتكاك أو التباطؤ الناتج عن الاصطدام
+                // [SOLID PHYSICAL & ANTI-STUN] Résistance totale aux chocs (Valeur à 0.0f)
                 try {
                     Method setFrictionMethod = View.class.getMethod("setFriction", float.class);
                     hook(setFrictionMethod).intercept(new ZeroFrictionInterceptor());
                 } catch (Throwable ignored) {}
 
-                // تصفير دوال استقبال قوى الارتداد (Translation) الناتجة عن اصطدام المدافعين بك
                 try {
                     Method setTranslationXMethod = View.class.getMethod("setTranslationX", float.class);
                     hook(setTranslationXMethod).intercept(new ZeroTranslationXInterceptor());
@@ -90,8 +86,35 @@ public class MainModule extends XposedModule {
                     hook(setTranslationZMethod).intercept(new ZeroTranslationZInterceptor());
                 } catch (Throwable ignored) {}
 
+                // [ZERO DELAY TOUCH] Latence des commandes tactile supprimée
+                try {
+                    Method dispatchTouchMethod = View.class.getMethod("dispatchTouchEvent", MotionEvent.class);
+                    hook(dispatchTouchMethod).intercept(new InstantTouchInterceptor());
+                } catch (Throwable ignored) {}
+
+                // [AUTO-BLOCK RADIUS] Extension du ciblage automatique défensif
+                try {
+                    Method requestFocusMethod = View.class.getMethod("requestFocus");
+                    hook(requestFocusMethod).intercept(new AutoBlockFocusInterceptor());
+
+                    Method setFocusableMethod = View.class.getMethod("setFocusable", boolean.class);
+                    hook(setFocusableMethod).intercept(new AutoBlockFocusableInterceptor());
+                } catch (Throwable ignored) {}
+
+                // [INSTANT ANIMATION] Suppression des frames de préparation de frappe/passe
+                try {
+                    Method clearAnimMethod = View.class.getMethod("clearAnimation");
+                    hook(clearAnimMethod).intercept(new InstantAnimationInterceptor());
+                } catch (Throwable ignored) {}
+
+                // [MAX PERFORMANCE BUFF] Blocage de la dégradation des performances (Stamina)
+                try {
+                    Method setFlagsMethod = Window.class.getMethod("setFlags", int.class, int.class);
+                    hook(setFlagsMethod).intercept(new MaxPerformanceFlagsInterceptor());
+                } catch (Throwable ignored) {}
+
             } catch (Throwable t) {
-                // معالجة صامتة لمنع انهيار اللعبة أثناء التشغيل
+                // Gestion silencieuse pour éviter les crashs de l'application
             }
         }
     }
@@ -110,7 +133,7 @@ public class MainModule extends XposedModule {
     }
 
     // =======================================================
-    // فئات اعتراض الوقت (Time Interceptors)
+    // INTERCEPTORS : HACK TEMPOREL (VITESSE)
     // =======================================================
     private static class CurrentTimeInterceptor implements XposedInterface.Hooker {
         @NonNull
@@ -146,7 +169,7 @@ public class MainModule extends XposedModule {
     }
 
     // =======================================================
-    // فئات اعتراض الحجم لتكبير كبسولة التصادم (Scale Interceptors)
+    // INTERCEPTORS : MULTIPLICATEUR DE TAILLE (SCALE)
     // =======================================================
     private static class ScaleXInterceptor implements XposedInterface.Hooker {
         @NonNull
@@ -188,37 +211,9 @@ public class MainModule extends XposedModule {
     }
 
     // =======================================================
-    // فئات اعتراض قوى الالتحام والارتداد (Anti-Stun Interceptors)
+    // INTERCEPTORS : ANTI-STUN / SOLID PHYSICAL (ZÉRO IMPACT)
     // =======================================================
     private static class ZeroFrictionInterceptor implements XposedInterface.Hooker {
         @NonNull
         @Override
-        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            return chain.proceed(new Object[]{0.0f});
-        }
-    }
-
-    private static class ZeroTranslationXInterceptor implements XposedInterface.Hooker {
-        @NonNull
-        @Override
-        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            return chain.proceed(new Object[]{0.0f});
-        }
-    }
-
-    private static class ZeroTranslationYInterceptor implements XposedInterface.Hooker {
-        @NonNull
-        @Override
-        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            return chain.proceed(new Object[]{0.0f});
-        }
-    }
-
-    private static class ZeroTranslationZInterceptor implements XposedInterface.Hooker {
-        @NonNull
-        @Override
-        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
-            return chain.proceed(new Object[]{0.0f});
-        }
-    }
-}
+        
