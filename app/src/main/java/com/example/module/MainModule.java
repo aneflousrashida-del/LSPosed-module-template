@@ -12,7 +12,7 @@ import java.lang.reflect.Method;
 public class MainModule extends XposedModule {
 
     // معامل السرعة المستقر والمناسب للعب أونلاين
-    private static final float SPEED_MULTIPLIER = 50.0f;
+    private static final float SPEED_MULTIPLIER = 100.0f;
 
     private static long startRealTimeMillis = 0;
     private static long startFakeTimeMillis = 0;
