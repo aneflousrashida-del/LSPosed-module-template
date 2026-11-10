@@ -5,12 +5,13 @@ import android.os.SystemClock;
 import androidx.annotation.NonNull;
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
+import io.github.libxposed.api.XposedModuleInterface;
 import java.lang.reflect.Method;
 
 @SuppressLint({"PrivateApi", "BlockedPrivateApi"})
 public class MainModule extends XposedModule {
 
-    // معامل السرعة: 1.5 لضمان السلاسة وتفادي الحظر
+    // معامل السرعة المستقر
     private static final float SPEED_MULTIPLIER = 1.5f;
 
     private static long startRealTimeMillis = 0;
@@ -21,27 +22,28 @@ public class MainModule extends XposedModule {
     private static long startFakeElapsedRealtime = 0;
     private static boolean isInitialized = false;
 
-    public MainModule(@NonNull XposedModule base, @NonNull PackageLoadedParam param) {
+    public MainModule(@NonNull XposedModule base, @NonNull XposedModuleInterface.PackageLoadedParam param) {
         super(base, param);
     }
 
     @Override
-    public void onPackageLoaded(@NonNull PackageLoadedParam param) {
-        // ننتظر حتى تصبح حزمة لعبة eFootball جاهزة للحقن
+    public void onPackageLoaded(@NonNull XposedModuleInterface.PackageLoadedParam param) {
+        super.onPackageLoaded(param);
         if (param.getPackageName().equals("jp.konami.pesam")) {
             initTimers();
         }
     }
 
     @Override
-    public void onPackageReady(@NonNull PackageReadyParam param) {
+    public void onPackageReady(@NonNull XposedModuleInterface.PackageReadyParam param) {
+        super.onPackageReady(param);
         if (param.getPackageName().equals("jp.konami.pesam")) {
             try {
                 // 1. Hook لدالة System.currentTimeMillis
                 Method currentTimeMethod = System.class.getDeclaredMethod("currentTimeMillis");
                 hook(currentTimeMethod).intercept(new CurrentTimeInterceptor());
 
-                // 2. Hook لدالة SystemClock.uptimeMillis (المسؤولة عن الأنيميشن والحركة)
+                // 2. Hook لدالة SystemClock.uptimeMillis
                 Method uptimeMethod = SystemClock.class.getDeclaredMethod("uptimeMillis");
                 hook(uptimeMethod).intercept(new UptimeInterceptor());
 
@@ -50,7 +52,7 @@ public class MainModule extends XposedModule {
                 hook(elapsedMethod).intercept(new ElapsedRealtimeInterceptor());
 
             } catch (Throwable t) {
-                // فشل ربط الهوك
+                // معالجة الخطأ بصمت لمنع توقف التطبيق
             }
         }
     }
@@ -69,6 +71,7 @@ public class MainModule extends XposedModule {
     }
 
     private static class CurrentTimeInterceptor implements XposedInterface.Hooker {
+        @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
             long realTime = (long) chain.proceed();
@@ -79,6 +82,7 @@ public class MainModule extends XposedModule {
     }
 
     private static class UptimeInterceptor implements XposedInterface.Hooker {
+        @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
             long realUptime = (long) chain.proceed();
@@ -89,6 +93,7 @@ public class MainModule extends XposedModule {
     }
 
     private static class ElapsedRealtimeInterceptor implements XposedInterface.Hooker {
+        @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
             long realElapsed = (long) chain.proceed();
