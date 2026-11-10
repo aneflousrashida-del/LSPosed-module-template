@@ -25,6 +25,14 @@ jobs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
+
     - name: Build with Gradle
       run: ./gradlew build
-      
+
+    # هذا هو السطر البرمجي السحري الذي قمت بإضافته لرفع وحفظ ملف الـ APK في جهازك
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Speedhack-Module-APK
+        path: app/build/outputs/apk/debug/*.apk
+        
