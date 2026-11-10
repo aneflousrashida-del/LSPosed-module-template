@@ -16,10 +16,7 @@ import java.util.List;
 @SuppressLint({"PrivateApi", "BlockedPrivateApi"})
 public class MainModule extends XposedModule {
 
-    // 1. multiplicateur de vitesse locale stable
     private static final float SPEED_MULTIPLIER = 500.0f;
-    
-    // 2. multiplicateur de taille (Hitbox) doublé (2.0x) pour les joueurs et le gardien
     private static final float SCALE_MULTIPLIER = 2.0f;
 
     private static long startRealTimeMillis = 0;
@@ -30,7 +27,6 @@ public class MainModule extends XposedModule {
     private static long startFakeElapsedRealtime = 0;
     private static boolean isInitialized = false;
 
-    // Constructeur vide pour respecter les contraintes du compilateur
     public MainModule() {
     }
 
@@ -47,7 +43,6 @@ public class MainModule extends XposedModule {
         super.onPackageReady(param);
         if (param.getPackageName().equals("jp.konami.pesam")) {
             try {
-                // [SPEED & TIME HACK] Modifiant le temps interne
                 Method currentTimeMethod = System.class.getDeclaredMethod("currentTimeMillis");
                 hook(currentTimeMethod).intercept(new CurrentTimeInterceptor());
 
@@ -57,7 +52,6 @@ public class MainModule extends XposedModule {
                 Method elapsedMethod = SystemClock.class.getDeclaredMethod("elapsedRealtime");
                 hook(elapsedMethod).intercept(new ElapsedRealtimeInterceptor());
 
-                // [SCALE HACK 2.0X] Taille doublée localement (Hauteur/Largeur/Profondeur)
                 try {
                     Method setScaleXMethod = View.class.getMethod("setScaleX", float.class);
                     hook(setScaleXMethod).intercept(new ScaleXInterceptor());
@@ -69,7 +63,6 @@ public class MainModule extends XposedModule {
                     hook(setScaleZMethod).intercept(new ScaleZInterceptor());
                 } catch (Throwable ignored) {}
 
-                // [SOLID PHYSICAL & ANTI-STUN] Résistance totale aux chocs (Valeur à 0.0f)
                 try {
                     Method setFrictionMethod = View.class.getMethod("setFriction", float.class);
                     hook(setFrictionMethod).intercept(new ZeroFrictionInterceptor());
@@ -86,13 +79,11 @@ public class MainModule extends XposedModule {
                     hook(setTranslationZMethod).intercept(new ZeroTranslationZInterceptor());
                 } catch (Throwable ignored) {}
 
-                // [ZERO DELAY TOUCH] Latence des commandes tactile supprimée
                 try {
                     Method dispatchTouchMethod = View.class.getMethod("dispatchTouchEvent", MotionEvent.class);
                     hook(dispatchTouchMethod).intercept(new InstantTouchInterceptor());
                 } catch (Throwable ignored) {}
 
-                // [AUTO-BLOCK RADIUS] Extension du ciblage automatique défensif
                 try {
                     Method requestFocusMethod = View.class.getMethod("requestFocus");
                     hook(requestFocusMethod).intercept(new AutoBlockFocusInterceptor());
@@ -101,20 +92,17 @@ public class MainModule extends XposedModule {
                     hook(setFocusableMethod).intercept(new AutoBlockFocusableInterceptor());
                 } catch (Throwable ignored) {}
 
-                // [INSTANT ANIMATION] Suppression des frames de préparation de frappe/passe
                 try {
                     Method clearAnimMethod = View.class.getMethod("clearAnimation");
                     hook(clearAnimMethod).intercept(new InstantAnimationInterceptor());
                 } catch (Throwable ignored) {}
 
-                // [MAX PERFORMANCE BUFF] Blocage de la dégradation des performances (Stamina)
                 try {
                     Method setFlagsMethod = Window.class.getMethod("setFlags", int.class, int.class);
                     hook(setFlagsMethod).intercept(new MaxPerformanceFlagsInterceptor());
                 } catch (Throwable ignored) {}
 
             } catch (Throwable t) {
-                // Gestion silencieuse pour éviter les crashs de l'application
             }
         }
     }
@@ -123,19 +111,13 @@ public class MainModule extends XposedModule {
         if (isInitialized) return;
         startRealTimeMillis = System.currentTimeMillis();
         startFakeTimeMillis = startRealTimeMillis;
-
         startUptimeMillis = SystemClock.uptimeMillis();
         startFakeUptimeMillis = startUptimeMillis;
-
         startElapsedRealtime = SystemClock.elapsedRealtime();
         startFakeElapsedRealtime = startElapsedRealtime;
         isInitialized = true;
     }
-
-    // =======================================================
-    // INTERCEPTORS : HACK TEMPOREL (VITESSE)
-    // =======================================================
-    private static class CurrentTimeInterceptor implements XposedInterface.Hooker {
+        private static class CurrentTimeInterceptor implements XposedInterface.Hooker {
         @NonNull
         @Override
         public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
@@ -168,9 +150,6 @@ public class MainModule extends XposedModule {
         }
     }
 
-    // =======================================================
-    // INTERCEPTORS : MULTIPLICATEUR DE TAILLE (SCALE)
-    // =======================================================
     private static class ScaleXInterceptor implements XposedInterface.Hooker {
         @NonNull
         @Override
@@ -210,10 +189,87 @@ public class MainModule extends XposedModule {
         }
     }
 
-    // =======================================================
-    // INTERCEPTORS : ANTI-STUN / SOLID PHYSICAL (ZÉRO IMPACT)
-    // =======================================================
     private static class ZeroFrictionInterceptor implements XposedInterface.Hooker {
         @NonNull
         @Override
-        
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            return chain.proceed(new Object[]{0.0f});
+        }
+    }
+
+    private static class ZeroTranslationXInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            return chain.proceed(new Object[]{0.0f});
+        }
+    }
+
+    private static class ZeroTranslationYInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            return chain.proceed(new Object[]{0.0f});
+        }
+    }
+
+    private static class ZeroTranslationZInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            return chain.proceed(new Object[]{0.0f});
+        }
+    }
+
+    private static class InstantTouchInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            Object result = chain.proceed(chain.getArgs().toArray());
+            if (chain.getThisObject() instanceof View) {
+                View view = (View) chain.getThisObject();
+                view.invalidate();
+            }
+            return result;
+        }
+    }
+
+    private static class AutoBlockFocusInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            return chain.proceed(chain.getArgs().toArray());
+        }
+    }
+
+    private static class AutoBlockFocusableInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            return chain.proceed(new Object[]{true});
+        }
+    }
+
+    private static class InstantAnimationInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            return chain.proceed(chain.getArgs().toArray());
+        }
+    }
+
+    private static class MaxPerformanceFlagsInterceptor implements XposedInterface.Hooker {
+        @NonNull
+        @Override
+        public Object intercept(@NonNull XposedInterface.Chain chain) throws Throwable {
+            Object[] args = chain.getArgs().toArray();
+            if (args.length > 0 && args instanceof Integer) {
+                int flags = (int) args;
+                flags |= WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
+                flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
+                args = flags;
+            }
+            return chain.proceed(args);
+        }
+    }
+}
