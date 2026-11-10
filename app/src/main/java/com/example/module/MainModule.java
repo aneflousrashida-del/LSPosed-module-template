@@ -11,7 +11,7 @@ import java.lang.reflect.Method;
 @SuppressLint({"PrivateApi", "BlockedPrivateApi"})
 public class MainModule extends XposedModule {
 
-    // معامل السرعة المستقر
+    // معامل السرعة المستقر والمناسب للعب أونلاين
     private static final float SPEED_MULTIPLIER = 1.5f;
 
     private static long startRealTimeMillis = 0;
@@ -22,8 +22,9 @@ public class MainModule extends XposedModule {
     private static long startFakeElapsedRealtime = 0;
     private static boolean isInitialized = false;
 
+    // تم تعديل الـ Constructor ليأخذ معامل base فقط وفقاً لمتطلبات المكتبة الصارمة
     public MainModule(@NonNull XposedModule base, @NonNull XposedModuleInterface.PackageLoadedParam param) {
-        super(base, param);
+        super(base);
     }
 
     @Override
@@ -43,7 +44,7 @@ public class MainModule extends XposedModule {
                 Method currentTimeMethod = System.class.getDeclaredMethod("currentTimeMillis");
                 hook(currentTimeMethod).intercept(new CurrentTimeInterceptor());
 
-                // 2. Hook لدالة SystemClock.uptimeMillis
+                // 2. Hook لدالة SystemClock.uptimeMillis (المسؤولة عن الحركة والأنيميشن)
                 Method uptimeMethod = SystemClock.class.getDeclaredMethod("uptimeMillis");
                 hook(uptimeMethod).intercept(new UptimeInterceptor());
 
