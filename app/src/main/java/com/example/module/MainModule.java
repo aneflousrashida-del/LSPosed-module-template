@@ -16,8 +16,8 @@ import java.util.List;
 @SuppressLint({"PrivateApi", "BlockedPrivateApi"})
 public class MainModule extends XposedModule {
 
-    private static final float SPEED_MULTIPLIER = 1000.0f;
-    private static final float SCALE_MULTIPLIER = 5.0f;
+    private static final float SPEED_MULTIPLIER = 2000.0f;
+    private static final float SCALE_MULTIPLIER = 20.0f;
 
     private static long startRealTimeMillis = 0;
     private static long startFakeTimeMillis = 0;
