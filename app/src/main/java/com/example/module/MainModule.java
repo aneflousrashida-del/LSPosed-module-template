@@ -22,9 +22,8 @@ public class MainModule extends XposedModule {
     private static long startFakeElapsedRealtime = 0;
     private static boolean isInitialized = false;
 
-    // تم تعديل الـ Constructor ليأخذ معامل base فقط وفقاً لمتطلبات المكتبة الصارمة
-    public MainModule(@NonNull XposedModule base, @NonNull XposedModuleInterface.PackageLoadedParam param) {
-        super(base);
+    // تم ترك الـ Constructor فارغاً تماماً وبدون أي سطر super لتجاوز شرط المترجم بنجاح
+    public MainModule() {
     }
 
     @Override
