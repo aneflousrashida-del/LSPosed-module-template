@@ -201,7 +201,7 @@ int speedhack_initializeSpeed(float speed)
 
 
 
-  speedmultiplier=1.5f;
+  speedmultiplier=2.0f;
 
   return 1;
 }
