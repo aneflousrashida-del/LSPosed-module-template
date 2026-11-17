@@ -10,7 +10,7 @@
 typedef int (*CLOCK_GETTIME) (clockid_t clk_id, struct timespec *tp);
 CLOCK_GETTIME real_clock_gettime = NULL;
 
-static double speed_multiplier = 1.5;
+static double speed_multiplier = 5.0;
 
 static struct timespec start_real_time;
 static struct timespec start_fake_time;
