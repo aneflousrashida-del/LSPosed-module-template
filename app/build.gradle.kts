@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace = "com.example.module"
-    compileSdk = 36 // Can be modified as needed
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.module"
@@ -12,13 +12,15 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        // تحديد ترجمة الكود لمعمارية 64 بت فقط للأنظمة الحديثة
         ndk {
             abiFilters.add("arm64-v8a")
         }
     }
 
-    // ربط ملف التوجيه والترجمة لكود الـ C
+    buildFeatures {
+        prefab = true
+    }
+
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
@@ -28,6 +30,7 @@ android {
 
     lint {
         targetSdk = 36
+        checkReleaseBuilds = false
     }
 
     buildTypes {
@@ -45,10 +48,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
-    lint {
-        checkReleaseBuilds = false
-    }
-
     dependenciesInfo {
         includeInApk = false
     }
@@ -57,4 +56,5 @@ android {
 dependencies {
     compileOnly("androidx.annotation:annotation:1.9.1")
     compileOnly("io.github.libxposed:api")
+    implementation("com.bytedance.android:shadowhook:1.0.9")
 }
