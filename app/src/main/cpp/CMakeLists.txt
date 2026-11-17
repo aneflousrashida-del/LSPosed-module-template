@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.22.1)
 project("speedhack")
 
-add_library(speedhack SHARED speedhack.c)
-
+find_package(shadowhook REQUIRED CONFIG)
 find_library(log-lib log)
-target_link_libraries(speedhack ${log-lib} m)
+
+add_library(speedhack SHARED speedhack.c)
+target_link_libraries(speedhack ${log-lib} m shadowhook::shadowhook)
