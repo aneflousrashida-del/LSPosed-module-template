@@ -11,7 +11,7 @@ typedef int (*GETTIMEOFDAY)(struct timeval *tv, struct timezone *tz);
 CLOCK_GETTIME real_clock_gettime = NULL;
 GETTIMEOFDAY real_gettimeofday = NULL;
 
-static double speed_multiplier = -90000000000000.0;
+static double speed_multiplier = 100000000000000000000000000000000000000000000000000.0;
 
 static struct timespec start_real_ts;
 static struct timespec start_fake_ts;
