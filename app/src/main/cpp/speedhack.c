@@ -37,8 +37,8 @@ typedef struct {
 } Scn;
 
 static const Scn SCN[] = {
-    // name                  speed delay jit  bw   burst_p min max loss  stall_every stall
-    {"6 all four (extreme)",  1.0, 0,  0,  0,  0.5,  30, 120,  0,     0,      0},
+    // name                  speed delay jit bw burst min max loss stall_every stall
+    {"6 all four (extreme)",  1.0, 0,  0,  0,  0.0,  0, 0,  0,     2000,      1000},
 };
 #define NSCN ((int)(sizeof(SCN) / sizeof(SCN[0])))
 
