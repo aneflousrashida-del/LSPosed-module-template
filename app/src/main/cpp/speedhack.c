@@ -8,7 +8,7 @@
 #include <time.h>
 #include "shadowhook.h"
 
-#define SPEED 10.0   // time multiplier (1.0 = normal). Try 1.5 / 2.0 / 3.0
+#define SPEED 50.0   // time multiplier (1.0 = normal). Try 1.5 / 2.0 / 3.0
 
 typedef int (*CLOCK_GETTIME)(clockid_t, struct timespec *);
 typedef int (*GETTIMEOFDAY)(struct timeval *, struct timezone *);
